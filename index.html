@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DetectorIA — Verificador de noticias colombiano</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0f0a;
+    --bg2: #10160f;
+    --bg3: #161e15;
+    --surface: #1b231a;
+    --surface2: #222e20;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #eef4ec;
+    --text2: #8aaa88;
+    --text3: #4a6448;
+    --accent: #34a853;
+    --accent2: #5dbf76;
+    --accent-dim: rgba(52,168,83,0.13);
+    --google-blue: #4285f4;
+    --google-blue-dim: rgba(66,133,244,0.12);
+    --google-red: #ea4335;
+    --google-red-dim: rgba(234,67,53,0.12);
+    --google-yellow: #fbbc04;
+    --google-yellow-dim: rgba(251,188,4,0.12);
+    --green: #34a853;
+    --green-dim: rgba(52,168,83,0.12);
+    --red: #ea4335;
+    --red-dim: rgba(234,67,53,0.12);
+    --amber: #fbbc04;
+    --amber-dim: rgba(251,188,4,0.12);
+    --font-head: 'Syne', sans-serif;
+    --font-serif: 'Instrument Serif', serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-head);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(52,168,83,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(52,168,83,0.025) 1px, transparent 1px);
+    background-size: 44px 44px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -180px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 700px;
+    height: 500px;
+    background: radial-gradient(ellipse, rgba(52,168,83,0.10) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header { padding: 52px 0 0; text-align: center; }
+
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(52,168,83,0.28);
+    border-radius: 100px;
+    padding: 7px 18px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  /* Google colors bar */
+  .google-bar {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .gbar-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+  }
+
+  .pulse-dot {
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.65); }
+  }
+
+  h1 {
+    font-size: clamp(50px, 9vw, 84px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 0.93;
+    margin-bottom: 18px;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  h1 .accent { color: var(--accent2); }
+  h1 .serif { font-family: var(--font-serif); font-weight: 400; font-style: italic; }
+
+  .tagline {
+    font-size: 15px;
+    color: var(--text2);
+    font-weight: 400;
+    margin-bottom: 16px;
+    animation: fadeUp 0.6s 0.15s ease both;
+  }
+
+  .powered-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 48px;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .powered-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .gemini-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 100px;
+    background: var(--google-blue-dim);
+    border: 1px solid rgba(66,133,244,0.25);
+    font-size: 11px;
+    font-weight: 700;
+    color: #7ab4f8;
+    letter-spacing: 0.06em;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* API Key setup */
+  .apikey-card {
+    background: var(--surface);
+    border: 1px solid rgba(251,188,4,0.25);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    animation: fadeUp 0.6s 0.25s ease both;
+  }
+
+  .apikey-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .apikey-text { flex: 1; min-width: 200px; }
+  .apikey-title { font-size: 13px; font-weight: 700; color: var(--amber); margin-bottom: 3px; }
+  .apikey-sub { font-size: 12px; color: var(--text2); }
+  .apikey-sub a { color: #7ab4f8; text-decoration: none; }
+  .apikey-sub a:hover { text-decoration: underline; }
+
+  .apikey-input-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+    min-width: 240px;
+  }
+
+  input[type="password"], input[type="text"], textarea {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--font-head);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="password"] { width: 100%; font-family: var(--font-mono); font-size: 12px; }
+
+  input[type="password"]:focus,
+  input[type="text"]:focus,
+  textarea:focus { border-color: rgba(52,168,83,0.5); }
+
+  input::placeholder, textarea::placeholder { color: var(--text3); }
+
+  .save-key-btn {
+    padding: 10px 16px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-family: var(--font-head);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .save-key-btn:hover { background: var(--accent2); }
+
+  .key-ok {
+    font-size: 11px;
+    color: var(--green);
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 5px;
+  }
+  .key-ok.visible { display: flex; }
+
+  /* Input card */
+  .input-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 28px;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg2);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 20px;
+    width: fit-content;
+  }
+
+  .tab {
+    padding: 7px 18px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text3);
+    font-family: var(--font-head);
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  textarea#mainInput {
+    width: 100%;
+    resize: none;
+    height: 140px;
+    line-height: 1.65;
+    font-size: 14px;
+    border-radius: 12px;
+  }
+
+  input#titleInput {
+    width: 100%;
+    font-size: 14px;
+    border-radius: 12px;
+    padding: 14px 18px;
+  }
+
+  .section-mini-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .examples-row {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .example-pill {
+    font-size: 12px;
+    padding: 6px 13px;
+    border-radius: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    cursor: pointer;
+    font-family: var(--font-head);
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .example-pill:hover { border-color: var(--accent); color: var(--text); }
+
+  .input-footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .context-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .chip {
+    padding: 5px 13px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    font-family: var(--font-head);
+  }
+
+  .chip:hover, .chip.active {
+    border-color: var(--accent);
+    color: var(--accent2);
+    background: var(--accent-dim);
+  }
+
+  .analyze-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 28px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: all 0.2s;
+  }
+  .analyze-btn:hover { background: var(--accent2); transform: translateY(-1px); }
+  .analyze-btn:active { transform: translateY(0); }
+  .analyze-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+  /* Loading */
+  .loading-state {
+    display: none;
+    text-align: center;
+    padding: 60px 0;
+    animation: fadeUp 0.4s ease both;
+  }
+  .loading-state.visible { display: block; }
+
+  .gemini-spinner {
+    width: 72px; height: 72px;
+    margin: 0 auto 28px;
+    position: relative;
+  }
+
+  .gemini-spinner svg { animation: spin 2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .loading-sub {
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 28px;
+  }
+
+  .loading-steps { display: flex; flex-direction: column; gap: 6px; max-width: 260px; margin: 0 auto; }
+
+  .loading-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text3);
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.4s;
+  }
+  .loading-step.active { color: var(--text2); background: var(--surface); }
+  .loading-step.done { color: var(--green); }
+  .step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; transition: background 0.3s; }
+  .loading-step.active .step-dot { background: var(--accent2); animation: pulse 1s ease infinite; }
+  .loading-step.done .step-dot { background: var(--green); }
+
+  /* Error */
+  .error-box {
+    background: var(--red-dim);
+    border: 1px solid rgba(234,67,53,0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    color: var(--red);
+    font-size: 14px;
+    margin-bottom: 20px;
+    display: none;
+    line-height: 1.6;
+  }
+  .error-box.visible { display: block; }
+
+  /* Results */
+  .results { display: none; animation: fadeUp 0.5s ease both; }
+  .results.visible { display: block; }
+
+  .score-header {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 32px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 18px;
+  }
+
+  .score-ring-wrap { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+  .score-ring-wrap svg { transform: rotate(-90deg); }
+
+  .score-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .score-number { font-size: 34px; font-weight: 800; line-height: 1; }
+  .score-label { font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-top: 2px; }
+
+  .verdict-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .verdict-badge.high { background: var(--red-dim); color: var(--red); border: 1px solid rgba(234,67,53,0.25); }
+  .verdict-badge.medium { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(251,188,4,0.25); }
+  .verdict-badge.low { background: var(--green-dim); color: var(--green); border: 1px solid rgba(52,168,83,0.25); }
+
+  .verdict-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; line-height: 1.3; }
+  .verdict-text { font-size: 14px; color: var(--text2); line-height: 1.75; font-weight: 400; }
+
+  .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+  .analysis-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .card-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; }
+
+  .signal-list { display: flex; flex-direction: column; gap: 9px; }
+  .signal-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .signal-icon { width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 1px; font-weight: 700; }
+  .signal-icon.warn { background: var(--red-dim); color: var(--red); }
+  .signal-icon.ok { background: var(--green-dim); color: var(--green); }
+  .signal-icon.neutral { background: var(--amber-dim); color: var(--amber); }
+
+  .meter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .meter-label { font-size: 12px; color: var(--text2); width: 130px; flex-shrink: 0; }
+  .meter-bar { flex: 1; height: 5px; background: var(--bg2); border-radius: 100px; overflow: hidden; }
+  .meter-fill { height: 100%; border-radius: 100px; transition: width 1.1s cubic-bezier(0.4,0,0.2,1); }
+  .meter-val { font-size: 12px; font-family: var(--font-mono); color: var(--text3); width: 36px; text-align: right; }
+
+  .sources-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 18px; }
+  .sources-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 10px; margin-top: 14px; }
+
+  .source-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px; background: var(--bg2);
+    border: 1px solid var(--border); border-radius: 10px;
+    cursor: pointer; transition: all 0.2s; text-decoration: none;
+  }
+  .source-item:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .source-favicon { width: 28px; height: 28px; border-radius: 6px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+  .source-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .source-type { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+  /* Gemini branding footer */
+  .gemini-footer-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--google-blue-dim);
+    border: 1px solid rgba(66,133,244,0.2);
+    border-radius: 14px;
+    padding: 14px 20px;
+    margin-bottom: 24px;
+    font-size: 12px;
+    color: #7ab4f8;
+  }
+
+  .gemini-logo { font-size: 20px; }
+
+  .reset-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: transparent; border: 1px solid var(--border2);
+    color: var(--text2); padding: 10px 20px; border-radius: 10px;
+    font-family: var(--font-head); font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; margin-bottom: 52px;
+  }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent2); }
+
+  footer {
+    text-align: center; padding: 28px 0;
+    border-top: 1px solid var(--border);
+    color: var(--text3); font-size: 12px;
+    position: relative; z-index: 1;
+  }
+
+  @media (max-width: 600px) {
+    .score-header { grid-template-columns: 1fr; text-align: center; }
+    .score-ring-wrap { margin: 0 auto; }
+    .analysis-grid { grid-template-columns: 1fr; }
+    h1 { font-size: 44px; }
+    .apikey-card { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo-badge">
+      <div class="google-bar">
+        <div class="gbar-dot" style="background:#4285f4"></div>
+        <div class="gbar-dot" style="background:#ea4335"></div>
+        <div class="gbar-dot" style="background:#fbbc04"></div>
+        <div class="gbar-dot" style="background:#34a853"></div>
+      </div>
+      Hackathon Google · Colombia 2025
+    </div>
+    <h1>Detector<span class="accent serif">IA</span></h1>
+    <p class="tagline">Verificación de noticias en tiempo real · Contexto colombiano</p>
+    <div class="powered-row">
+      <span class="powered-label">Powered by</span>
+      <span class="gemini-badge">✦ Gemini 1.5 Flash</span>
+    </div>
+  </header>
+
+  <!-- API Key setup -->
+  <div class="apikey-card" id="apikeyCard">
+    <div class="apikey-icon">🔑</div>
+    <div class="apikey-text">
+      <div class="apikey-title">Configurá tu API Key de Google AI Studio</div>
+      <div class="apikey-sub">Obtené una gratis en <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> · Solo se guarda en esta sesión</div>
+    </div>
+    <div class="apikey-input-wrap">
+      <input type="password" id="apiKeyInput" placeholder="AIza..." />
+      <button class="save-key-btn" onclick="saveKey()">Guardar</button>
+      <span class="key-ok" id="keyOk">✓ Lista</span>
+    </div>
+  </div>
+
+  <!-- Input card -->
+  <div class="input-card" id="inputCard">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('text', this)">Texto / URL</button>
+      <button class="tab" onclick="switchTab('title', this)">Solo titular</button>
+    </div>
+
+    <div id="tab-text">
+      <p class="section-mini-label">Ejemplos rápidos</p>
+      <div class="examples-row">
+        <button class="example-pill" onclick="loadExample(0)">⚠️ Fake sobre vacunas</button>
+        <button class="example-pill" onclick="loadExample(1)">🗳️ Rumor electoral</button>
+        <button class="example-pill" onclick="loadExample(2)">✅ Noticia verificada</button>
+      </div>
+      <textarea id="mainInput" placeholder="Pegá el texto completo de la noticia, el titular o la URL que querés verificar..."></textarea>
+    </div>
+
+    <div id="tab-title" style="display:none">
+      <input type="text" id="titleInput" placeholder="Ej: El Gobierno ocultó brotes de sarampión en Bogotá durante 3 meses">
+    </div>
+
+    <div class="input-footer">
+      <div>
+        <p class="section-mini-label" style="margin-bottom:7px">Contexto prioritario</p>
+        <div class="context-chips">
+          <button class="chip active" id="chip-elecciones" onclick="toggleChip(this)">Elecciones</button>
+          <button class="chip active" id="chip-salud" onclick="toggleChip(this)">Salud pública</button>
+          <button class="chip active" id="chip-orden" onclick="toggleChip(this)">Orden público</button>
+          <button class="chip" id="chip-economia" onclick="toggleChip(this)">Economía</button>
+          <button class="chip" id="chip-paz" onclick="toggleChip(this)">Paz total</button>
+        </div>
+      </div>
+      <button class="analyze-btn" id="analyzeBtn" onclick="analyze()">
+        <span>✦</span> Analizar con Gemini
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" id="loadingState">
+    <div class="gemini-spinner">
+      <svg viewBox="0 0 72 72" width="72" height="72" fill="none">
+        <circle cx="36" cy="36" r="30" stroke="rgba(255,255,255,0.06)" stroke-width="6"/>
+        <circle cx="36" cy="36" r="30" stroke="#4285f4" stroke-width="6" stroke-linecap="round"
+          stroke-dasharray="188.5" stroke-dashoffset="140"/>
+        <circle cx="36" cy="36" r="20" stroke="rgba(255,255,255,0.04)" stroke-width="5"/>
+        <circle cx="36" cy="36" r="20" stroke="#34a853" stroke-width="5" stroke-linecap="round"
+          stroke-dasharray="125.7" stroke-dashoffset="90"/>
+      </svg>
+    </div>
+    <p class="loading-title">Gemini analizando...</p>
+    <p class="loading-sub">Procesando con IA en contexto colombiano</p>
+    <div class="loading-steps">
+      <div class="loading-step" id="ls1"><span class="step-dot"></span>Procesando contenido</div>
+      <div class="loading-step" id="ls2"><span class="step-dot"></span>Cruzando base de datos</div>
+      <div class="loading-step" id="ls3"><span class="step-dot"></span>Analizando lenguaje</div>
+      <div class="loading-step" id="ls4"><span class="step-dot"></span>Calculando veracidad</div>
+      <div class="loading-step" id="ls5"><span class="step-dot"></span>Identificando fuentes</div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="score-header">
+      <div class="score-ring-wrap">
+        <svg viewBox="0 0 110 110" width="110" height="110">
+          <circle cx="55" cy="55" r="46" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="10"/>
+          <circle id="scoreCircle" cx="55" cy="55" r="46" fill="none" stroke="#34a853" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="289.03" stroke-dashoffset="289.03"
+            style="transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1), stroke 0.5s"/>
+        </svg>
+        <div class="score-center">
+          <span class="score-number" id="scoreNum" style="color:#34a853">—</span>
+          <span class="score-label">Score</span>
+        </div>
+      </div>
+      <div class="verdict-section">
+        <div class="verdict-badge" id="verdictBadge">—</div>
+        <div class="verdict-title" id="verdictTitle">Analizando...</div>
+        <div class="verdict-text" id="verdictText"></div>
+      </div>
+    </div>
+
+    <div class="analysis-grid">
+      <div class="analysis-card">
+        <div class="card-label">Señales detectadas</div>
+        <div class="signal-list" id="signalList"></div>
+      </div>
+      <div class="analysis-card">
+        <div class="card-label">Indicadores de credibilidad</div>
+        <div id="meterList"></div>
+      </div>
+    </div>
+
+    <div class="sources-card">
+      <div class="card-label">Fuentes alternativas recomendadas</div>
+      <div class="sources-grid" id="sourcesList"></div>
+    </div>
+
+    <div class="gemini-footer-card">
+      <span class="gemini-logo">✦</span>
+      <div>
+        <strong>Análisis realizado con Gemini 1.5 Flash · Google AI Studio</strong><br>
+        Este score es orientativo. Siempre verificá con las fuentes antes de compartir.
+      </div>
+    </div>
+
+    <button class="reset-btn" onclick="reset()">← Analizar otra noticia</button>
+  </div>
+
+  <footer>
+    DetectorIA · Hackathon Google Colombia 2025 · Powered by Gemini API
+  </footer>
+</div>
+
+<script>
+const EXAMPLES = [
+  `El Ministerio de Salud está ocultando información sobre una nueva vacuna experimental que se está aplicando sin consentimiento en municipios de Antioquia. Fuentes cercanas al gobierno confirmaron que ya hay más de 200 casos de reacciones graves pero los medios vendidos no lo están reportando. COMPARTE ANTES DE QUE LO BORREN.`,
+  `Según fuentes del CNE, Petro ya tiene ganadas las próximas elecciones regionales porque tiene acceso al software de conteo de votos. El fraude está preparado desde hace meses y el registrador está comprado. Varios testigos electorales ya denunciaron pero nadie los escucha.`,
+  `El Instituto Nacional de Salud reportó esta semana una reducción del 18% en casos de dengue en la región Caribe colombiana respecto al mismo período del año anterior. El director del INS atribuyó el descenso a las jornadas de fumigación y a las campañas de descacharrización realizadas en los últimos tres meses.`
+];
+
+let activeTab = 'text';
+let apiKey = '';
+let loadingInterval = null;
+
+function saveKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val || !val.startsWith('AIza')) {
+    alert('La API key debe empezar con "AIza". Revisá en aistudio.google.com');
+    return;
+  }
+  apiKey = val;
+  document.getElementById('keyOk').classList.add('visible');
+  document.getElementById('apikeyCard').style.borderColor = 'rgba(52,168,83,0.35)';
+}
+
+function switchTab(tab, btn) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-text').style.display = tab === 'text' ? 'block' : 'none';
+  document.getElementById('tab-title').style.display = tab === 'title' ? 'block' : 'none';
+}
+
+function loadExample(idx) {
+  document.getElementById('mainInput').value = EXAMPLES[idx];
+  if (activeTab !== 'text') switchTab('text', document.querySelectorAll('.tab')[0]);
+}
+
+function toggleChip(el) { el.classList.toggle('active'); }
+
+function getActiveContexts() {
+  return ['elecciones','salud','orden','economia','paz']
+    .filter(c => document.getElementById('chip-'+c).classList.contains('active'))
+    .map(c => c === 'orden' ? 'orden público' : c === 'paz' ? 'paz total' : c);
+}
+
+function getInput() {
+  if (activeTab === 'text') return document.getElementById('mainInput').value.trim();
+  return document.getElementById('titleInput').value.trim();
+}
+
+function animateLoadingSteps() {
+  const steps = ['ls1','ls2','ls3','ls4','ls5'];
+  let current = 0;
+  steps.forEach(id => { const el = document.getElementById(id); el.classList.remove('active','done'); });
+  clearInterval(loadingInterval);
+  loadingInterval = setInterval(() => {
+    if (current > 0) {
+      const prev = document.getElementById(steps[current-1]);
+      prev.classList.remove('active'); prev.classList.add('done');
+    }
+    if (current < steps.length) {
+      document.getElementById(steps[current]).classList.add('active');
+      current++;
+    } else { clearInterval(loadingInterval); }
+  }, 700);
+}
+
+async function analyze() {
+  const input = getInput();
+  if (!input) { alert('Por favor ingresá un texto o titular para analizar.'); return; }
+  if (!apiKey) { alert('Primero guardá tu API key de Google AI Studio.'); return; }
+
+  document.getElementById('inputCard').style.display = 'none';
+  document.getElementById('errorBox').classList.remove('visible');
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('loadingState').classList.add('visible');
+  document.getElementById('analyzeBtn').disabled = true;
+
+  animateLoadingSteps();
+
+  const contexts = getActiveContexts().join(', ');
+
+  const prompt = `Eres DetectorIA, un sistema especializado en verificación de noticias colombianas. Analiza el siguiente contenido y responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdown, sin backticks.
+
+CONTEXTOS PRIORITARIOS: ${contexts}
+
+CONTENIDO A ANALIZAR:
+"${input}"
+
+Responde exactamente con este JSON:
+{
+  "score": <número 0-100, donde 0=completamente falso, 100=completamente verificado>,
+  "riesgo": <"ALTO" | "MEDIO" | "BAJO">,
+  "titulo_veredicto": <string máximo 8 palabras resumiendo el veredicto>,
+  "resumen": <string 2-3 oraciones explicando el análisis en español colombiano sin tecnicismos>,
+  "señales": [
+    {"tipo": <"warn"|"ok"|"neutral">, "texto": <string corto describiendo la señal>}
+  ],
+  "indicadores": [
+    {"nombre": <string>, "valor": <número 0-100>, "color": <"#ea4335"|"#fbbc04"|"#34a853">}
+  ],
+  "fuentes": [
+    {"nombre": <string>, "tipo": <string>, "emoji": <string>, "url": <string>}
+  ]
+}
+
+Reglas estrictas:
+- score < 35 → riesgo ALTO (probable desinformación)
+- score 35-65 → riesgo MEDIO (verificar)
+- score > 65 → riesgo BAJO (mayor credibilidad)
+- Exactamente 4 señales, 4 indicadores, 3 fuentes colombianas reales
+- Indicadores: "Lenguaje alarmista", "Fuentes citadas", "Consistencia factual", "Tono emocional"
+- Fuentes reales: Colombiacheck, El Tiempo, Semana, INS, Registraduría, Verdad Abierta, La Silla Vacía
+- Responde SOLO con el JSON`;
+
+  try {
+    const { GoogleGenerativeAI } = await import('https://esm.sh/@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: { temperature: 0.3, maxOutputTokens: 1200 }
+    });
+
+    const result = await model.generateContent(prompt);
+    const rawText = result.response.text();
+
+    let parsed;
+    try {
+      const clean = rawText.replace(/```json|```/g, '').trim();
+      parsed = JSON.parse(clean);
+    } catch(e) {
+      throw new Error('Gemini devolvió una respuesta inesperada. Intentá de nuevo.');
+    }
+
+    showResults(parsed);
+
+  } catch(err) {
+    clearInterval(loadingInterval);
+    document.getElementById('loadingState').classList.remove('visible');
+    document.getElementById('inputCard').style.display = 'block';
+    document.getElementById('analyzeBtn').disabled = false;
+    const errBox = document.getElementById('errorBox');
+    errBox.innerHTML = '⚠️ <strong>Error:</strong> ' + err.message;
+    errBox.classList.add('visible');
+  }
+}
+
+function showResults(data) {
+  clearInterval(loadingInterval);
+  document.getElementById('loadingState').classList.remove('visible');
+
+  const score = Math.min(100, Math.max(0, data.score || 50));
+  const riesgo = (data.riesgo || 'MEDIO').toUpperCase();
+
+  const circumference = 289.03;
+  const offset = circumference - (score / 100) * circumference;
+  const circle = document.getElementById('scoreCircle');
+  const scoreColor = riesgo === 'ALTO' ? '#ea4335' : riesgo === 'MEDIO' ? '#fbbc04' : '#34a853';
+  circle.style.stroke = scoreColor;
+  setTimeout(() => { circle.style.strokeDashoffset = offset; }, 100);
+
+  document.getElementById('scoreNum').textContent = score;
+  document.getElementById('scoreNum').style.color = scoreColor;
+
+  const badge = document.getElementById('verdictBadge');
+  const badgeClass = riesgo === 'ALTO' ? 'high' : riesgo === 'MEDIO' ? 'medium' : 'low';
+  const badgeEmoji = riesgo === 'ALTO' ? '🚨' : riesgo === 'MEDIO' ? '⚠️' : '✅';
+  const badgeText = riesgo === 'ALTO' ? 'Riesgo Alto' : riesgo === 'MEDIO' ? 'Riesgo Medio' : 'Verificado';
+  badge.className = 'verdict-badge ' + badgeClass;
+  badge.innerHTML = badgeEmoji + ' ' + badgeText;
+
+  document.getElementById('verdictTitle').textContent = data.titulo_veredicto || 'Análisis completado';
+  document.getElementById('verdictText').textContent = data.resumen || '';
+
+  document.getElementById('signalList').innerHTML = (data.señales || []).slice(0,4).map(s => `
+    <div class="signal-item">
+      <span class="signal-icon ${s.tipo}">${s.tipo==='warn'?'✕':s.tipo==='ok'?'✓':'!'}</span>
+      <span>${s.texto}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('meterList').innerHTML = (data.indicadores || []).slice(0,4).map(m => `
+    <div class="meter-row">
+      <span class="meter-label">${m.nombre}</span>
+      <div class="meter-bar"><div class="meter-fill" style="width:0%;background:${m.color}" data-val="${m.valor}"></div></div>
+      <span class="meter-val">${m.valor}%</span>
+    </div>
+  `).join('');
+
+  setTimeout(() => {
+    document.querySelectorAll('.meter-fill').forEach(el => {
+      el.style.width = el.dataset.val + '%';
+    });
+  }, 200);
+
+  document.getElementById('sourcesList').innerHTML = (data.fuentes || []).slice(0,4).map(f => `
+    <a class="source-item" href="${f.url}" target="_blank" rel="noopener">
+      <div class="source-favicon">${f.emoji || '📰'}</div>
+      <div>
+        <div class="source-name">${f.nombre}</div>
+        <div class="source-type">${f.tipo}</div>
+      </div>
+    </a>
+  `).join('');
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('analyzeBtn').disabled = false;
+}
+
+function reset() {
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('inputCard').style.display = 'block';
+  document.getElementById('errorBox').classList.remove('visible');
+  document.getElementById('mainInput').value = '';
+  document.getElementById('titleInput').value = '';
+  document.getElementById('scoreCircle').style.strokeDashoffset = 289.03;
+}
+</script>
+</body>
+</html>
